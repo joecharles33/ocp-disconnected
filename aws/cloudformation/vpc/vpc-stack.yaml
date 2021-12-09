@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Template for Best Practice VPC with 1-3 AZs
+Description: Template for Best Practice VPC with 1-3 AZs. One Public Subnet, three private Subnets
 
 Parameters:
   VpcCidr:
@@ -12,7 +12,7 @@ Parameters:
     ConstraintDescription: "The number of availability zones. (Min: 1, Max: 3)"
     MinValue: 1
     MaxValue: 3
-    Default: 1
+    Default: 3
     Description: "How many AZs to create VPC subnets for. (Min: 1, Max: 3)"
     Type: Number
   SubnetBits:
@@ -54,6 +54,7 @@ Resources:
       EnableDnsSupport: "true"
       EnableDnsHostnames: "true"
       CidrBlock: !Ref VpcCidr
+
   PublicSubnet:
     Type: "AWS::EC2::Subnet"
     Properties:
@@ -62,35 +63,21 @@ Resources:
       AvailabilityZone: !Select
       - 0
       - Fn::GetAZs: !Ref "AWS::Region"
-  PublicSubnet2:
-    Type: "AWS::EC2::Subnet"
-    Condition: DoAz2
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
-      AvailabilityZone: !Select
-      - 1
-      - Fn::GetAZs: !Ref "AWS::Region"
-  PublicSubnet3:
-    Type: "AWS::EC2::Subnet"
-    Condition: DoAz3
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
-      AvailabilityZone: !Select
-      - 2
-      - Fn::GetAZs: !Ref "AWS::Region"
+
   InternetGateway:
     Type: "AWS::EC2::InternetGateway"
+
   GatewayToInternet:
     Type: "AWS::EC2::VPCGatewayAttachment"
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
+
   PublicRouteTable:
     Type: "AWS::EC2::RouteTable"
     Properties:
       VpcId: !Ref VPC
+
   PublicRoute:
     Type: "AWS::EC2::Route"
     DependsOn: GatewayToInternet
@@ -98,152 +85,96 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref InternetGateway
+
   PublicSubnetRouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId: !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
-  PublicSubnetRouteTableAssociation2:
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Condition: DoAz2
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-  PublicSubnetRouteTableAssociation3:
-    Condition: DoAz3
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Properties:
-      SubnetId: !Ref PublicSubnet3
-      RouteTableId: !Ref PublicRouteTable
+
   PrivateSubnet:
     Type: "AWS::EC2::Subnet"
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
       AvailabilityZone: !Select
       - 0
       - Fn::GetAZs: !Ref "AWS::Region"
+
   PrivateRouteTable:
     Type: "AWS::EC2::RouteTable"
     Properties:
       VpcId: !Ref VPC
+
   PrivateSubnetRouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
-  NAT:
-    DependsOn:
-    - GatewayToInternet
-    Type: "AWS::EC2::NatGateway"
-    Properties:
-      AllocationId:
-        "Fn::GetAtt":
-        - EIP
-        - AllocationId
-      SubnetId: !Ref PublicSubnet
-  EIP:
-    Type: "AWS::EC2::EIP"
-    Properties:
-      Domain: vpc
-  Route:
-    Type: "AWS::EC2::Route"
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NAT
+
   PrivateSubnet2:
     Type: "AWS::EC2::Subnet"
     Condition: DoAz2
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [4, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
+      CidrBlock: !Select [2, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
       AvailabilityZone: !Select
       - 1
       - Fn::GetAZs: !Ref "AWS::Region"
+
   PrivateRouteTable2:
     Type: "AWS::EC2::RouteTable"
     Condition: DoAz2
     Properties:
       VpcId: !Ref VPC
+
   PrivateSubnetRouteTableAssociation2:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Condition: DoAz2
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable2
-  NAT2:
-    DependsOn:
-    - GatewayToInternet
-    Type: "AWS::EC2::NatGateway"
-    Condition: DoAz2
-    Properties:
-      AllocationId:
-        "Fn::GetAtt":
-        - EIP2
-        - AllocationId
-      SubnetId: !Ref PublicSubnet2
-  EIP2:
-    Type: "AWS::EC2::EIP"
-    Condition: DoAz2
-    Properties:
-      Domain: vpc
-  Route2:
-    Type: "AWS::EC2::Route"
-    Condition: DoAz2
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTable2
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NAT2
+
   PrivateSubnet3:
     Type: "AWS::EC2::Subnet"
     Condition: DoAz3
     Properties:
       VpcId: !Ref VPC
-      CidrBlock: !Select [5, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
+      CidrBlock: !Select [3, !Cidr [!Ref VpcCidr, 6, !Ref SubnetBits]]
       AvailabilityZone: !Select
       - 2
       - Fn::GetAZs: !Ref "AWS::Region"
+
   PrivateRouteTable3:
     Type: "AWS::EC2::RouteTable"
     Condition: DoAz3
     Properties:
       VpcId: !Ref VPC
+
   PrivateSubnetRouteTableAssociation3:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Condition: DoAz3
     Properties:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateRouteTable3
-  NAT3:
-    DependsOn:
-    - GatewayToInternet
-    Type: "AWS::EC2::NatGateway"
-    Condition: DoAz3
-    Properties:
-      AllocationId:
-        "Fn::GetAtt":
-        - EIP3
-        - AllocationId
-      SubnetId: !Ref PublicSubnet3
-  EIP3:
-    Type: "AWS::EC2::EIP"
-    Condition: DoAz3
-    Properties:
-      Domain: vpc
-  Route3:
-    Type: "AWS::EC2::Route"
-    Condition: DoAz3
-    Properties:
-      RouteTableId:
-        Ref: PrivateRouteTable3
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId:
-        Ref: NAT3
+
+HTTPSSSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Allow-SSH-HTTPS
+      GroupName: Allow-SSH-HTTPS
+      SecurityGroupIngress: 
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPC
+
+
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -268,17 +199,63 @@ Resources:
         - .s3
       VpcId: !Ref VPC
 
+  EC2Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal: '*'
+          Action:
+          - '*'
+          Resource:
+          - '*'
+      PrivateDnsEnabled: true
+      ServiceName: !Join
+      - ''
+      - - com.amazonaws.
+        - !Ref 'AWS::Region'
+        - .ec2
+      SubnetIds: 
+        - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
+
+  ELBEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal: '*'
+          Action:
+          - '*'
+          Resource:
+          - '*'
+      PrivateDnsEnabled: true
+      ServiceName: !Join
+      - ''
+      - - com.amazonaws.
+        - !Ref 'AWS::Region'
+        - .elasticloadbalancing
+      SubnetIds: 
+        - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
+
 Outputs:
   VpcId:
     Description: ID of the new VPC.
     Value: !Ref VPC
   PublicSubnetIds:
-    Description: Subnet IDs of the public subnets.
-    Value:
-      !Join [
-        ",",
-        [!Ref PublicSubnet, !If [DoAz2, !Ref PublicSubnet2, !Ref "AWS::NoValue"], !If [DoAz3, !Ref PublicSubnet3, !Ref "AWS::NoValue"]]
-      ]
+    Description: Subnet IDs of the public subnet.
+    Value: !Ref PublicSubnet
   PrivateSubnetIds:
     Description: Subnet IDs of the private subnets.
     Value:

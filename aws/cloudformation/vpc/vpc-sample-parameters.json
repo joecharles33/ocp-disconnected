@@ -10,5 +10,17 @@
   {
     "ParameterKey": "SubnetBits", 
     "ParameterValue": "12" 
+  },
+  {
+    "ParameterKey": "AMI", 
+    "ParameterValue": "ami-0ba62214afa52bec7" 
+  },
+  {
+    "ParameterKey": "InstanceType", 
+    "ParameterValue": "t2.micro" 
+  },
+  {
+    "ParameterKey": "SSHKeyName", 
+    "ParameterValue": "ecs-rhel-free-tier" 
   }
 ]

@@ -19,9 +19,21 @@ Parameters:
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/19-27.
     MinValue: 5
     MaxValue: 13
-    Default: 12
+    Default: 8
     Description: "Size of each subnet to create within the availability zones. (Min: 5 = /27, Max: 13 = /19)"
     Type: Number
+  AMI:
+    Type: String
+    Default: ami-0ba62214afa52bec7
+    Description: The AMI to use for the Bastion EC2 instance.
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: The instance type to use for the Bastion EC2 instance.
+  SSHKeyName:
+    Type: String
+    Default: ecs-rhel-free-tier
+    Description: The name of the key pair to use for SSH access to Bastion EC2 instance.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -158,22 +170,51 @@ Resources:
       SubnetId: !Ref PrivateSubnet3
       RouteTableId: !Ref PrivateRouteTable3
 
-HTTPSSSHSecurityGroup:
+  BastionSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties: 
       GroupDescription: Allow-SSH-HTTPS
       GroupName: Allow-SSH-HTTPS
       SecurityGroupIngress: 
       - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
         FromPort: 443
         ToPort: 443
         CidrIp: 0.0.0.0/0
       - IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
+        FromPort: 5000
+        ToPort: 5000
         CidrIp: 0.0.0.0/0
       VpcId: !Ref VPC
 
+  BastionEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: !Select
+      - 0
+      - Fn::GetAZs: !Ref "AWS::Region"
+      BlockDeviceMappings: 
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 30
+      ImageId: !Ref AMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref SSHKeyName
+      SecurityGroupIds: 
+        - Ref: BastionSecurityGroup
+      SubnetId: !Ref PublicSubnet
+
+  BastionEC2EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref BastionEC2Instance
 
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -263,3 +304,6 @@ Outputs:
         ",",
         [!Ref PrivateSubnet, !If [DoAz2, !Ref PrivateSubnet2, !Ref "AWS::NoValue"], !If [DoAz3, !Ref PrivateSubnet3, !Ref "AWS::NoValue"]]
       ]
+  EC2InstanceEIP:
+    Description: Public IP address for Bastion host
+    Value: !Ref BastionEC2EIP

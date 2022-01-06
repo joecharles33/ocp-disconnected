@@ -262,6 +262,8 @@ Resources:
         - !Ref PrivateSubnet
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+      SecurityGroupIds: 
+        - Ref: BastionSecurityGroup
       VpcEndpointType: Interface
       VpcId: !Ref VPC
 
@@ -287,6 +289,8 @@ Resources:
         - !Ref PrivateSubnet
         - !Ref PrivateSubnet2
         - !Ref PrivateSubnet3
+      SecurityGroupIds: 
+        - Ref: BastionSecurityGroup
       VpcEndpointType: Interface
       VpcId: !Ref VPC
 

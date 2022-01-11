@@ -21,6 +21,6 @@
   },
   {
     "ParameterKey": "SSHKeyName", 
-    "ParameterValue": "ecs-rhel-free-tier" 
+    "ParameterValue": "joe-cool-key"
   }
 ]

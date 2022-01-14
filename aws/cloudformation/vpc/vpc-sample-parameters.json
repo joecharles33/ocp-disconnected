@@ -13,7 +13,7 @@
   },
   {
     "ParameterKey": "AMI", 
-    "ParameterValue": "ami-0ba62214afa52bec7" 
+    "ParameterValue": "ami-0ba62214afa52bec7"
   },
   {
     "ParameterKey": "InstanceType", 
@@ -21,6 +21,6 @@
   },
   {
     "ParameterKey": "SSHKeyName", 
-    "ParameterValue": "joe-cool-key"
+    "ParameterValue": "cool-key"
   }
 ]
